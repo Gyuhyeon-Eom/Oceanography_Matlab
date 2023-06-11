@@ -1,0 +1,128 @@
+% Test value, 주기 3s 수심 100m
+T =3; 
+h = 100; 
+x0 =0.0001;   
+
+if sign(h) == -1
+       h = -h;
+end
+
+% Newton-Rapshon 
+omega_2 = ((2*pi)/T)^2;
+Gamma = (omega_2*h)/9.81;
+
+con = 1;
+
+if x0 ~= 0
+    x(con) = x0;
+    x(con+1) = x(con) - ( ( Gamma - (x(con) * tanh(x(con)))) / ...
+               ((-x(con)*(sech(x(con)))^ 2)-tanh(x(con))));
+    while abs( x(con+1) - x(con) ) > 0.00001
+            x(con+2) = x(con+1) - ( ( Gamma - (x(con+1) * tanh(x(con+1)))) / ...
+                       ((-x(con+1)*(sech(x(con+1)))^ 2)-tanh(x(con+1))));
+            con = con + 1;
+    end
+    kr = x(con)/h;
+    Lr = (2*pi)/kr;
+    omega = sqrt(omega_2);
+    Cr = Lr/T;
+    nr =0.5*(1+((2*kr*h)/sinh(2*kr*h)));
+    Cgr = nr * Cr;
+    
+else
+    disp('x0 = 0 으로는 함수를 실행할 수 없습니다. 다른 값으로 시도하세요');
+    kr = 0;
+    Lr = 0;
+end
+
+% Lo aproximation
+Lo = (9.81*T^2)/(2*pi);
+La = Lo * (tanh(((2*pi)*((sqrt(h/9.81))/T))^(3/2)))^(2/3);
+ka = ( 2 * pi ) /La;
+Ca = La/T;
+na =0.5*(1+((2*ka*h)/sinh(2*ka*h)));
+Cga = na * Ca;
+ea = (abs(Lr-La)/abs(Lr))*100;
+
+% Eckhart
+ke = omega_2/(9.81*sqrt(tanh(h*(omega_2/9.81))));
+Le = (2*pi)/ke;
+Ce = Le/T;
+ne =0.5*(1+((2*ke*h)/sinh(2*ke*h)));
+Cge = ne * Ce;
+ee = (abs(Lr-Le)/abs(Lr))*100;
+
+% Hunt
+yh = ((((2*pi)/T)^2)*h)/9.81;                                    
+d1 = 0.6666666666*yh;
+d2 = 0.3555555555*yh^2;
+d3 = 0.1608465608*yh^3;
+d4 = 0.0632098765*yh^4;
+d5 = 0.0217540484*yh^5;
+d6 = 0.0065407983*yh^6;
+sumd = d1+d2+d3+d4+d5+d6;
+dis = yh^2+(yh/(1+sumd));
+kh = sqrt(dis)/h;
+Lh = (2*pi)/kh;
+Ch = Lh/T;
+nh =0.5*(1+((2*ke*h)/sinh(2*ke*h)));
+Cgh = nh * Ch;
+eh = (abs(Lr-Lh)/abs(Lr))*100;
+
+fprintf('    Method:         L(m):     k(1/m):   omega(1/T):     C(m/s):   n:       Cg(m/s):   error*100\n');
+fprintf('---------------------------------------------------------------------------------------------\n');
+fprintf('Newton-Rhapson:     %6.3f   %6.3f      %6.3f        %6.3f    %6.3f   %6.3f      - \n', Lr,kr,omega,Cr,nr,Cgr);
+fprintf('Lo-aproximation:    %6.3f   %6.3f      %6.3f        %6.3f    %6.3f   %6.3f      %6.4f   \n', La,ka,omega,Ca,na,Cga,ea);
+fprintf('Eckart:             %6.3f   %6.3f      %6.3f        %6.3f    %6.3f   %6.3f      %6.4f   \n', Le,ke,omega,Ce,ne,Cge,ee);
+fprintf('Hunt:               %6.3f   %6.3f      %6.3f        %6.3f    %6.3f   %6.3f      %6.4f   \n', Lh,kh,omega,Ch,nh,Cgh,eh);
+fprintf('---------------------------------------------------------------------------------------------\n');
+fprintf('\n');
+fprintf('L = wave length, k = wave number,\n sigma = angular frequency,\n');
+fprintf('C = wave celerity, Cg = wave celerity group\n');
+fprintf('\n');
+fprintf('Note: Newton-Raphson을 이용하여 얻은 값을 L exact value 로 간주하면\n 다른 값의 상대 오차가 표에 표시된다. \n');
+%%
+%일정한 주기와 dispersion relationship을 통해 계산된 파장을 사용하여 
+%shallow water 부터 deep water 까지 수심을 변화시켜 파랑의 속도(celerity=L/T)를 계산하고,
+%shallow water celerity (=√gh)값과 비교하는 그래프를 그리시요.
+%Lr,La,Le,Lh
+
+T = 2:15;
+% Water depths vector (m)
+d = 1:4000;
+% Gravitational acceleration constant (ms^-2)
+g = 9.81;
+% Shallow water wave phase speed $ c = sqrt{gh} $
+% (ms^-1)
+c = sqrt(g.*d);
+% Plotting
+figure;
+plot(d,c,'Color','red');
+ax = gca;
+ax.XLim = [1 4000];
+ax.YLim = [0 200];
+ax.XLabel.String = 'Water depth (m)';
+ax.YLabel.String = 'Wave speed (ms^-1)';
+% Solving dispersion equation, using Lo aproximation **********
+for i = 1 : length(T)
+    for j = 1 : length(d)
+        Lo = (g*T(i)^2)/(2*pi);
+        L(j) = Lo*(tanh(((2*pi)*((sqrt(d(j)/g))/T(i)))^(3/2)))^(2/3);
+    end
+end
+ld = d./L;
+ldq = find(ld <= 0.04);
+fprintf('Minimum wavelength to be considered as shallow waters: %5.3f m \r\n',min(L(ldq)));
+
+
+
+
+
+% Referents:
+%              Darlymple, R.G. and Dean R.A. (1999). Water Wave Mechanics
+%              for Engineers and Scientist. World Scientific.
+%              Singapure.
+%              Fenton,J.D and Mckee,W.D.(1990). On calculating the lengths
+%              of water waves. Coastal Engineering 14, 499-513p.
+%              Gabriel Ruiz Martinez 2006.
+
